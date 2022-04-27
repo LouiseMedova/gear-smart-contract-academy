@@ -1,0 +1,21 @@
+[package]
+name = "sealed-bid-auction"
+authors = ["Gear Technologies"]
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+gstd = { git = "https://github.com/gear-tech/gear.git", features = ["debug"] }
+codec = { package = "parity-scale-codec", version = "3.1.2", default-features = false, features = ["derive", "full"] }
+primitive-types = { version = "0.11.1", default-features = false, features = ["scale-info"] }
+scale-info = { version = "2.0.1", default-features = false, features = ["derive"] }
+sealed-bid-auction-io = { path = "io" }
+sp-core-hashing = { version = "4.0.0", default-features = false }
+ft-io = { path = "../04-fungible-token/io/"}
+nft-io = { path = "../06-non-fungible-token/io/"}
+
+[build-dependencies]
+gear-wasm-builder = { git = "https://github.com/gear-tech/gear.git" }
+
+[dev-dependencies]
+gtest = { git = "https://github.com/gear-tech/gear.git" }
