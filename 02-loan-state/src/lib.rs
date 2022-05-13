@@ -1,10 +1,10 @@
 #![no_std]
 
 use codec::{Decode, Encode};
-use gstd::{exec, msg, prelude::*, ActorId};
+use gstd::{exec, debug, msg, prelude::*, ActorId};
 use scale_info::TypeInfo;
 
-#[derive(Encode, Decode)]
+#[derive(TypeInfo, Debug, Encode, Decode)]
 pub struct InitLoan {
     amount: u128,
     interest: u128,
@@ -14,7 +14,7 @@ pub struct InitLoan {
 }
 
 #[derive(PartialEq, Debug, Encode, Decode, TypeInfo, Clone)]
- pub enum LoanState {
+pub enum LoanState {
     Pending,
     Active,
     Closed,
@@ -51,7 +51,15 @@ pub enum LoanEvent {
 static mut LOAN: Option<Loan> = None;
 
 impl Loan {
+
     fn fund(&mut self) {
+        debug!("LENDER {:?}", self.lender);
+        debug!("LENDER {:?}", self.lender);
+        debug!("LENDER {:?}", self.lender);
+        debug!("LENDER {:?}", self.lender);
+        debug!("LENDER {:?}", self.lender);
+        debug!("LENDER {:?}", self.lender);
+        debug!("LENDER {:?}", self.lender);
         self.check_msg_source(self.lender);
         self.check_state(LoanState::Pending);
         self.check_attached_value(self.amount);
@@ -124,10 +132,10 @@ pub enum LoanMetaState {
 #[derive(Debug, Decode, Encode, TypeInfo)]
 pub enum LoanMetaStateReply {
     CurrentState(LoanState),
-    Details{ 
+    Details {
         lender: ActorId,
         borrower: ActorId,
-        amount: u128, 
+        amount: u128,
         interest: u128,
         end: u64,
     },
@@ -137,14 +145,17 @@ pub unsafe extern "C" fn meta_state() -> *mut [i32; 2] {
     let state: LoanMetaState = msg::load().expect("failed to decode LoanMetaState");
     let loan: &mut Loan = LOAN.get_or_insert(Loan::default());
     let encoded = match state {
-        LoanMetaState::CurrentState =>  LoanMetaStateReply::CurrentState(loan.state.clone()).encode(),
+        LoanMetaState::CurrentState => {
+            LoanMetaStateReply::CurrentState(loan.state.clone()).encode()
+        }
         LoanMetaState::Details => LoanMetaStateReply::Details {
             lender: loan.lender,
             borrower: loan.borrower,
             amount: loan.amount,
             interest: loan.interest,
             end: loan.end,
-        }.encode(),
+        }
+        .encode(),
     };
     gstd::util::to_leak_ptr(encoded)
 }
@@ -248,4 +259,16 @@ mod tests {
         // must fail since loan is already closed
         assert!(reimburse(&loan, BORROWER, 1100).main_failed());
     }
+}
+
+gstd::metadata! {
+    title: "Loan",
+    init:
+        input : InitLoan,
+    handle:
+        input : LoanAction,
+        output : LoanEvent,
+    state:
+        input: LoanMetaState,
+        output: LoanMetaStateReply,
 }
