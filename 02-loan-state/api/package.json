@@ -1,0 +1,22 @@
+{
+  "name": "api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^17.0.41",
+    "typescript": "^4.6.3"
+  },
+  "dependencies": {
+    "@gear-js/api": "^0.20.0",
+    "@polkadot/api": "^8.7.1",
+    "dotenv": "^16.0.0",
+    "gear-js-utils": "file:../../gear-js-utils"
+  }
+}
