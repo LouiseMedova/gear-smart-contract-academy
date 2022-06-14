@@ -1,23 +1,26 @@
-import { GearApi, getWasmMetadata, GearKeyring } from '@gear-js/api';
+import { GearApi, getWasmMetadata, GearKeyring, Hex } from '@gear-js/api';
 import { readFileSync } from 'fs';
+import { config } from 'dotenv';
+import { checkTransaction } from './utilsFunctions';
+config();
 
-require('dotenv').config();
-
-async function main() {
+async function reimburse() {
   const gearApi = await GearApi.create();
   const account = await GearKeyring.fromMnemonic(process.env.MNEMONIC);
 
   const metaFile = readFileSync(process.env.META_WASM);
   const meta = await getWasmMetadata(metaFile);
-  console.log(account);
+  const programId = process.argv.slice(2)[0];
+  const addressRaw = GearKeyring.decodeAddress(account.address);
 
   let payload = {
     Reimburse: null,
   };
 
+
   const gas = await gearApi.program.gasSpent.handle(
-    '0xd0ea7796708f088f39ce366351130e830973f841a8879398928996935c01cf37',
-    '0xf14b3356a630872393a3e041980ed246d829046af2da212d75efe2806e07ff3d', //program id
+    addressRaw,
+    programId as Hex, 
     payload,
     10010,
     meta,
@@ -26,7 +29,7 @@ async function main() {
 
   try {
     const message = {
-      destination: '0xf14b3356a630872393a3e041980ed246d829046af2da212d75efe2806e07ff3d',
+      destination: programId as Hex,
       payload,
       gasLimit: gas,
       value: 10010,
@@ -35,16 +38,20 @@ async function main() {
   } catch (error) {
     console.error(`${error.name}: ${error.message}`);
   }
-  try {
-    await gearApi.message.signAndSend(account, (event) => {
-      console.log(event.toHuman());
+  const status = checkTransaction(gearApi, programId);
+  await gearApi.message.signAndSend(account, ({events = []}) => {
+    
+    events.forEach(({ event: { method, data }}) => {
+      if (method === 'ExtrinsicFailed') {
+        throw (data.toHuman());
+      }
     });
-  } catch (error) {
-    console.error(`${error.name}: ${error.message}`);
-  }
+}) 
+
+  console.log(await status);
 }
 
-main()
+reimburse()
   .then(() => process.exit(0))
   .catch((error) => {
     console.log(error);

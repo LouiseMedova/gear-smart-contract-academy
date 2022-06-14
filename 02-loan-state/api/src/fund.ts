@@ -1,32 +1,35 @@
-import { GearApi, getWasmMetadata, GearKeyring } from '@gear-js/api';
+import { GearApi, getWasmMetadata, GearKeyring, Hex, UserMessageSent, CreateType } from '@gear-js/api';
 import { readFileSync } from 'fs';
+import {config } from 'dotenv';
+import { checkTransaction } from './utilsFunctions';
+config();
 
-require('dotenv').config();
-
-async function main() {
+async function fund() {
   const gearApi = await GearApi.create();
   const jsonKeyring = readFileSync(process.env.PATH_TO_KEYS).toString();
   const account = GearKeyring.fromJson(jsonKeyring, process.env.PASSWORD);
   const metaFile = readFileSync(process.env.META_WASM);
   const meta = await getWasmMetadata(metaFile);
 
+  const programId = process.argv.slice(2)[0];
+  const addressRaw = GearKeyring.decodeAddress(account.address);
+
   let payload = {
     Fund: null,
   };
 
   const gas = await gearApi.program.gasSpent.handle(
-    '0x8260b9aae93a8486064217041d5ee6b81a9f716ba428ce20692061a7b3b35662',
-    '0xf14b3356a630872393a3e041980ed246d829046af2da212d75efe2806e07ff3d', //program id
+    addressRaw,
+    programId as Hex,
     payload,
     10000,
     meta,
   );
   console.log('GAS SPENT', gas.toHuman());
-  console.log('program id', process.env.PROGRAM_ID);
 
   try {
     const message = {
-      destination: '0xf14b3356a630872393a3e041980ed246d829046af2da212d75efe2806e07ff3d', // as Hex,
+      destination: programId as Hex, 
       payload,
       gasLimit: gas,
       value: 10000,
@@ -36,22 +39,22 @@ async function main() {
     console.error(`${error.name}: ${error.message}`);
   }
 
-  // https://github.com/gear-tech/gear-js/blob/master/api/test/utilsFunctions.ts#L48-L60
-  try {
-    await gearApi.message.signAndSend(account, (event) => {
-      // Log only MessageEnqueued
-      // check Extrinsic Failed
-      console.log(event.toHuman());
-    });
-  } catch (error) {
-    console.error(`${error.name}: ${error.message}`);
-  }
+  const status = checkTransaction(gearApi, programId);
 
-  //https://github.com/gear-tech/gear-js/blob/master/api/test/ProgramsInteract.test.ts#L131-L144
-  // if error in reply throw exception
+  await gearApi.message.signAndSend(account, ({events = []}) => {
+    
+    events.forEach(({ event: { method, data }}) => {
+      if (method === 'ExtrinsicFailed') {
+        throw (data.toHuman());
+      }
+    });
+}) 
+
+  console.log(await status);
+  
 }
 
-main()
+fund()
   .then(() => process.exit(0))
   .catch((error) => {
     console.log(error);
